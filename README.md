@@ -171,6 +171,8 @@ console.log(diff.summary);
 
 `mergeCsp` unions allowlists deterministically. If one input contains `'none'`, the merged directive remains `'none'` unless `allowNoneWidening` is explicitly set. If merged output would contain `'unsafe-inline'`, the merge throws unless `allowUnsafeInline` is explicitly set. These options are deliberate escape hatches, not silent defaults.
 
+Both functions also accept policies as separate arguments, optionally followed by an options object, for example `mergeCsp(policyA, policyB, { allowNoneWidening: true })`. The final argument is treated as options only when at least one policy precedes it and every key is a known option name; any other object, including an empty one or one that mixes option and directive keys, is treated as a policy.
+
 `intersectCsp` keeps only source expressions common to every input for shared directives and falls back to `'none'` when the intersection is empty. `diffCsp` reports added, removed, changed, and unchanged directives plus source-level changes.
 
 ## CLI
