@@ -337,7 +337,8 @@ test('bin file has executable shebang', () => {
   assert.equal(text.startsWith('#!/usr/bin/env node'), true);
 });
 
-test('bin file is executable on disk', () => {
+test('bin file is executable on disk where executable modes exist', () => {
+  if (process.platform === 'win32') return;
   const mode = fs.statSync(path.join(root, 'bin', 'cspcage.mjs')).mode;
   assert.notEqual(mode & 0o111, 0);
 });
