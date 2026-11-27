@@ -220,10 +220,11 @@ test('package identity and version are correct', () => {
   assert.equal(pkg.license, 'MIT');
 });
 
-test('package has zero runtime and development dependencies', () => {
+test('package has zero runtime dependencies and only the pinned fuzz development dependency', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   assert.deepEqual(pkg.dependencies, {});
-  assert.deepEqual(pkg.devDependencies, {});
+  assert.deepEqual(Object.keys(pkg.devDependencies), ['fast-check']);
+  assert.match(pkg.devDependencies['fast-check'], /^\d+\.\d+\.\d+$/);
 });
 
 test('package exports dual ESM and CJS entry points', () => {
@@ -359,8 +360,10 @@ test('gitignore excludes generated local artifacts', () => {
   for (const item of ['node_modules/', '*.tgz', 'coverage/']) assert.equal(text.includes(item), true, item);
 });
 
-test('no package lock or node_modules is required for zero dependency runtime', () => {
-  assert.equal(fs.existsSync(path.join(root, 'node_modules')), false);
+test('repository lockfile supports reproducible development installs', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+  assert.equal(lock.packages[''].dependencies, undefined);
+  assert.deepEqual(Object.keys(lock.packages[''].devDependencies), ['fast-check']);
 });
 
 test('source files have no runtime dependency imports outside node builtins and local modules', () => {

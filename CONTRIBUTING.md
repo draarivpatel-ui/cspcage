@@ -4,7 +4,7 @@ Contributions are welcome for parser correctness, CSP Level 3 coverage, audit ru
 
 ## Development setup
 
-Node.js 18 or newer is required. There are no runtime or development package dependencies to install for the core test suite. A TypeScript executable is used when available for declaration verification; otherwise the type check script uses npm execution.
+Node.js 18 or newer is required. Runtime package dependencies are zero. The pinned fast-check development dependency is installed with `npm ci` for property fuzzing. A TypeScript executable is used when available for declaration verification; otherwise the type check script uses npm execution.
 
 ## Required checks
 

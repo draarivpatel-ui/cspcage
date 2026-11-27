@@ -1,5 +1,7 @@
 # cspcage
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/draarivpatel-ui/cspcage/badge)](https://scorecard.dev/viewer/?uri=github.com/draarivpatel-ui/cspcage)
+
 Zero-dependency Content-Security-Policy Level 3 security firewall, XSS-bypass auditor, nonce and hash guard, and safe header builder for Node.js.
 
 `cspcage` parses bounded CSP headers, audits real-world bypass conditions, generates cryptographically strong nonces and hashes, builds safe headers, and merges or diffs policies without silently weakening them. It is designed for Express, Fastify, Next.js, Hono, edge adapters, security middleware, CI policy checks, and plain Node HTTP services.
