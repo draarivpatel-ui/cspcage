@@ -262,9 +262,19 @@ export interface CspMergeOptions {
   readonly requireCleanAudit?: boolean;
 }
 
+/**
+ * Variadic merge arguments with a trailing options object. At runtime the final
+ * argument is treated as options only when at least one policy precedes it and it
+ * is a plain object whose keys are all known merge option names; an empty object
+ * or one mixing option and directive keys is treated as a policy.
+ */
+export type CspMergeVariadicArgs = readonly [first: CspMergeInput, ...policies: CspMergeInput[], options: CspMergeOptions];
+
 export function mergeCsp(policies: readonly CspMergeInput[], options?: CspMergeOptions): string;
+export function mergeCsp(...args: CspMergeVariadicArgs): string;
 export function mergeCsp(...policies: readonly CspMergeInput[]): string;
 export function intersectCsp(policies: readonly CspMergeInput[], options?: CspMergeOptions): string;
+export function intersectCsp(...args: CspMergeVariadicArgs): string;
 export function intersectCsp(...policies: readonly CspMergeInput[]): string;
 
 export interface CspDirectiveDiff {

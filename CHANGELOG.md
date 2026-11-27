@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format follows Keep a Changelog concepts, and this project uses semantic versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- TypeScript declarations now accept a trailing `CspMergeOptions` object in the variadic `mergeCsp` and `intersectCsp` calling forms, matching runtime behavior.
+
 ## [1.0.0] - 2026-11-27
 
 ### Added

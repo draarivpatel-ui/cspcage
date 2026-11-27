@@ -477,6 +477,48 @@ test('mergeCsp rejects unknown options', () => {
   expectError(() => mergeCsp(["script-src 'self'"], { unknown: true }), CODE.INVALID_OPTIONS);
 });
 
+test('mergeCsp accepts a trailing options object in variadic form', () => {
+  const output = mergeCsp("script-src 'none'", "script-src 'self'", { allowNoneWidening: true });
+  assert.equal(output, "script-src 'self'");
+});
+
+test('mergeCsp variadic options match array-call options', () => {
+  const inputs = ["script-src 'unsafe-inline'", "script-src 'self'"];
+  assert.equal(mergeCsp(...inputs, { allowUnsafeInline: true }), mergeCsp(inputs, { allowUnsafeInline: true }));
+});
+
+test('intersectCsp accepts a trailing options object in variadic form', () => {
+  const output = intersectCsp("script-src 'unsafe-inline'", "script-src 'unsafe-inline'", { allowUnsafeInline: true });
+  assert.equal(output, "script-src 'unsafe-inline'");
+});
+
+test('variadic directive object mixing option and directive keys is a policy', () => {
+  expectError(() => mergeCsp("script-src 'self'", { allowNoneWidening: true, scriptSrc: ["'self'"] }), CODE.UNKNOWN_DIRECTIVE);
+  expectError(() => intersectCsp("script-src 'self'", { allowNoneWidening: true, scriptSrc: ["'self'"] }), CODE.UNKNOWN_DIRECTIVE);
+});
+
+test('variadic directive object is never mistaken for options', () => {
+  const output = mergeCsp("script-src 'self'", { scriptSrc: ['https://cdn.example.com/app.js'] });
+  assert.equal(output, "script-src 'self' https://cdn.example.com/app.js");
+});
+
+test('variadic misspelled option key is a policy and fails', () => {
+  expectError(() => mergeCsp("script-src 'none'", "script-src 'self'", { allowNoneWidning: true }), CODE.UNKNOWN_DIRECTIVE);
+  expectError(() => intersectCsp("script-src 'self'", { allowUnsafeInlin: true }), CODE.UNKNOWN_DIRECTIVE);
+});
+
+test('lone options-shaped object is treated as a policy', () => {
+  expectError(() => mergeCsp({ allowNoneWidening: true }), CODE.UNKNOWN_DIRECTIVE);
+});
+
+test('variadic empty object is treated as a policy', () => {
+  expectError(() => mergeCsp("script-src 'self'", {}), CODE.INVALID_BUILD_INPUT);
+});
+
+test('intersectCsp rejects unknown options', () => {
+  expectError(() => intersectCsp(["script-src 'self'"], { unknown: true }), CODE.INVALID_OPTIONS);
+});
+
 test('intersectCsp keeps only common source expressions', () => {
   const output = intersectCsp([
     "script-src 'self' https://one.example.com",
