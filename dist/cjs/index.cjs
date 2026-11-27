@@ -49,7 +49,8 @@ const CSPCAGE_ERROR_CODES = Object.freeze({
   INVALID_HASH_INPUT: 'CSPCAGE_INVALID_HASH_INPUT',
   INVALID_MERGE_INPUT: 'CSPCAGE_INVALID_MERGE_INPUT',
   UNSAFE_INLINE_MERGE: 'CSPCAGE_UNSAFE_INLINE_MERGE',
-  INVALID_CLI_ARGUMENT: 'CSPCAGE_INVALID_CLI_ARGUMENT'
+  INVALID_CLI_ARGUMENT: 'CSPCAGE_INVALID_CLI_ARGUMENT',
+  FINDINGS_TRUNCATED: 'CSPCAGE_FINDINGS_TRUNCATED'
 });
 
 const CODE = CSPCAGE_ERROR_CODES;
@@ -224,6 +225,7 @@ const SCRIPT_GADGET_HOSTS = Object.freeze([
   'amazonaws.com',
   'cloudfront.net',
   'cdn.jsdelivr.net',
+  'jsdelivr.net',
   'unpkg.com',
   'cdnjs.cloudflare.com',
   'raw.githubusercontent.com'
@@ -491,9 +493,9 @@ function normalizeInput(input) {
   throw new CspCageError(CSPCAGE_ERROR_CODES.INVALID_INPUT, 'CSP input must be a string or a non-empty array of strings');
 }
 
-function splitPolicyUnits(input) {
+function splitPolicyUnits(headers) {
   const pieces = [];
-  for (const header of normalizeInput(input)) {
+  for (const header of headers) {
     const parts = header.split(',');
     for (const part of parts) pieces.push(part);
   }
@@ -908,11 +910,12 @@ function parseCspInternal(input, options = {}) {
   const policies = [];
   let totalBytes = 0;
   try {
-    const units = splitPolicyUnits(input);
-    for (const unit of units) totalBytes += byteLength(unit);
+    const headers = normalizeInput(input);
+    for (const header of headers) totalBytes += byteLength(header);
     if (totalBytes > bounds.maxBytes) {
       recordError(errors, new CspCageError(CSPCAGE_ERROR_CODES.INPUT_TOO_LARGE, 'CSP input exceeds the byte-length bound'), bounds);
     } else {
+      const units = splitPolicyUnits(headers);
       if (units.length > bounds.maxPolicies) {
         recordError(errors, new CspCageError(CSPCAGE_ERROR_CODES.TOO_MANY_POLICIES, 'policy count bound exceeded'), bounds);
       }
@@ -980,10 +983,13 @@ const NOTICE = CSPCAGE_SEVERITY.NOTICE;
 
 function makeAccumulator(maxFindings) {
   const findings = [];
+  const counts = { error: 0, warning: 0, notice: 0 };
+  let truncated = false;
   return {
     findings,
+    counts,
     add(severity, code, message, context = {}) {
-      if (findings.length >= maxFindings) return;
+      if (Object.prototype.hasOwnProperty.call(counts, severity)) counts[severity] += 1;
       const finding = {
         severity,
         code,
@@ -992,7 +998,25 @@ function makeAccumulator(maxFindings) {
         directive: typeof context.directive === 'string' ? context.directive : null,
         recommendation: typeof context.recommendation === 'string' ? context.recommendation : null
       };
+      if (findings.length >= maxFindings) {
+        truncated = true;
+        return;
+      }
       findings.push(Object.freeze(finding));
+    },
+    finish() {
+      if (!truncated) return;
+      counts.error += 1;
+      const sentinel = Object.freeze({
+        severity: ERROR,
+        code: 'CSPCAGE_FINDINGS_TRUNCATED',
+        message: 'finding count reached the configured cap; suppressed findings make this report fail closed',
+        policyIndex: null,
+        directive: null,
+        recommendation: 'Increase maxFindings or reduce policy complexity, then re-run the audit before deployment.'
+      });
+      if (findings.length < maxFindings) findings.push(sentinel);
+      else findings[maxFindings - 1] = sentinel;
     }
   };
 }
@@ -1145,12 +1169,12 @@ function analyzeCriticalSources(policy, item, acc) {
 
 function analyzeCdnGadgets(policy, acc) {
   for (const item of scriptRelevantDirectives(policy)) {
-    if (hasKeyword(item, 'strict-dynamic') || hasValidHash(item)) continue;
+    if (hasKeyword(item, 'strict-dynamic')) continue;
     for (const source of item.sources) {
-      if (source.kind !== 'host' || source.hasExactPath) continue;
+      if (source.kind !== 'host') continue;
       const matched = scriptGadgetMatch(source.host);
       if (matched !== null) {
-        acc.add(ERROR, 'CDN_SCRIPT_GADGET_HOST', source.host + ' is a known JSONP, AngularJS, or CDN script-gadget bypass host', { policyIndex: policy.index, directive: item.name, recommendation: 'Use strict-dynamic with a strong nonce or hash, or pin an exact versioned path.' });
+        acc.add(ERROR, 'CDN_SCRIPT_GADGET_HOST', source.host + ' is a known JSONP, AngularJS, or CDN script-gadget bypass host; exact paths remain URL-allowlist entries and do not provide cryptographic proof of content', { policyIndex: policy.index, directive: item.name, recommendation: 'Use strict-dynamic with a strong nonce or hash instead of a CDN URL allowlist.' });
       }
     }
   }
@@ -1263,7 +1287,8 @@ function ipv4PrivateOrLoopback(host) {
 }
 
 function privateOrLoopbackHost(host) {
-  const lower = host.toLowerCase().replace(/^\[|\]$/gu, '');
+  let lower = host.toLowerCase().replace(/^\[|\]$/gu, '');
+  if (lower.endsWith('.')) lower = lower.slice(0, -1);
   if (lower === 'localhost' || lower.endsWith('.localhost')) return true;
   if (ipv4PrivateOrLoopback(lower)) return true;
   if (lower === '::1' || lower === '::') return true;
@@ -1284,17 +1309,17 @@ function privateOrLoopbackHost(host) {
 
 function analyzeOneEndpoint(token, policy, directiveName, acc) {
   const context = { policyIndex: policy.index, directive: directiveName };
-  const url = parseEndpointUrl(token);
-  if (url === null) {
-    if (token.startsWith('//')) {
-      acc.add(WARNING, 'REPORT_ENDPOINT_PROTOCOL_RELATIVE', 'protocol-relative reporting endpoints can leak reports over plaintext HTTP', { ...context, recommendation: 'Use an explicit HTTPS endpoint.' });
-    }
-    return;
+  const protocolRelative = token.startsWith('//');
+  let url = parseEndpointUrl(token);
+  if (url === null && protocolRelative) url = parseEndpointUrl('https:' + token);
+  if (protocolRelative) {
+    acc.add(WARNING, 'REPORT_ENDPOINT_PROTOCOL_RELATIVE', 'protocol-relative reporting endpoints can leak reports over plaintext HTTP', { ...context, recommendation: 'Use an explicit HTTPS endpoint.' });
   }
+  if (url === null) return;
   if (url.username !== '' || url.password !== '') {
     acc.add(ERROR, 'REPORT_ENDPOINT_CREDENTIALS', 'reporting endpoint contains credentials in the URL', { ...context, recommendation: 'Remove credentials and use a server-side secret or signed ingestion path.' });
   }
-  if (url.protocol !== 'https:') {
+  if (!protocolRelative && url.protocol !== 'https:') {
     acc.add(WARNING, 'REPORT_ENDPOINT_NOT_HTTPS', 'reporting endpoint is not HTTPS and can expose violation reports', { ...context, recommendation: 'Use HTTPS for every reporting endpoint.' });
   }
   if (privateOrLoopbackHost(url.hostname)) {
@@ -1348,7 +1373,8 @@ const DEDUCTIONS = Object.freeze({
   CSPCAGE_UNKNOWN_DIRECTIVE: 15,
   CSPCAGE_DEPRECATED_DIRECTIVE: 12,
   CSPCAGE_MALFORMED_NONCE: 12,
-  CSPCAGE_MALFORMED_HASH: 12
+  CSPCAGE_MALFORMED_HASH: 12,
+  CSPCAGE_FINDINGS_TRUNCATED: 10
 });
 
 function scoreFindings(findings, policyIndex) {
@@ -1427,10 +1453,11 @@ function auditCsp(input, options = {}) {
     }
   }
 
+  acc.finish();
   const findings = Object.freeze(acc.findings.slice());
-  const errors = findings.filter((finding) => finding.severity === ERROR).length;
-  const warnings = findings.filter((finding) => finding.severity === WARNING).length;
-  const notices = findings.filter((finding) => finding.severity === NOTICE).length;
+  const errors = acc.counts.error;
+  const warnings = acc.counts.warning;
+  const notices = acc.counts.notice;
   const policyResults = parsed.policies.map((policy) => {
     const score = parseErrors.length > 0 ? Math.min(scoreFindings(findings, policy.index), 45) : scoreFindings(findings, policy.index);
     return Object.freeze({

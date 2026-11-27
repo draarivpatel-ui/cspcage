@@ -31,9 +31,9 @@ function normalizeInput(input) {
   throw new CspCageError(CSPCAGE_ERROR_CODES.INVALID_INPUT, 'CSP input must be a string or a non-empty array of strings');
 }
 
-function splitPolicyUnits(input) {
+function splitPolicyUnits(headers) {
   const pieces = [];
-  for (const header of normalizeInput(input)) {
+  for (const header of headers) {
     const parts = header.split(',');
     for (const part of parts) pieces.push(part);
   }
@@ -448,11 +448,12 @@ export function parseCspInternal(input, options = {}) {
   const policies = [];
   let totalBytes = 0;
   try {
-    const units = splitPolicyUnits(input);
-    for (const unit of units) totalBytes += byteLength(unit);
+    const headers = normalizeInput(input);
+    for (const header of headers) totalBytes += byteLength(header);
     if (totalBytes > bounds.maxBytes) {
       recordError(errors, new CspCageError(CSPCAGE_ERROR_CODES.INPUT_TOO_LARGE, 'CSP input exceeds the byte-length bound'), bounds);
     } else {
+      const units = splitPolicyUnits(headers);
       if (units.length > bounds.maxPolicies) {
         recordError(errors, new CspCageError(CSPCAGE_ERROR_CODES.TOO_MANY_POLICIES, 'policy count bound exceeded'), bounds);
       }

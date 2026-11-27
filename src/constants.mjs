@@ -42,7 +42,8 @@ export const CSPCAGE_ERROR_CODES = Object.freeze({
   INVALID_HASH_INPUT: 'CSPCAGE_INVALID_HASH_INPUT',
   INVALID_MERGE_INPUT: 'CSPCAGE_INVALID_MERGE_INPUT',
   UNSAFE_INLINE_MERGE: 'CSPCAGE_UNSAFE_INLINE_MERGE',
-  INVALID_CLI_ARGUMENT: 'CSPCAGE_INVALID_CLI_ARGUMENT'
+  INVALID_CLI_ARGUMENT: 'CSPCAGE_INVALID_CLI_ARGUMENT',
+  FINDINGS_TRUNCATED: 'CSPCAGE_FINDINGS_TRUNCATED'
 });
 
 export const CODE = CSPCAGE_ERROR_CODES;
@@ -217,6 +218,7 @@ export const SCRIPT_GADGET_HOSTS = Object.freeze([
   'amazonaws.com',
   'cloudfront.net',
   'cdn.jsdelivr.net',
+  'jsdelivr.net',
   'unpkg.com',
   'cdnjs.cloudflare.com',
   'raw.githubusercontent.com'

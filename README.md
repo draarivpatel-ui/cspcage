@@ -87,7 +87,7 @@ for (const finding of report.findings) {
 }
 ```
 
-`auditCsp` never throws for hostile policy text. It returns a deeply frozen report with errors, warnings, notices, a score from 0 to 100, a letter grade, per-policy results, and a strict-CSP shape indicator.
+`auditCsp` never throws for hostile policy text. It returns a deeply frozen report with errors, warnings, notices, a score from 0 to 100, a letter grade, per-policy results, and a strict-CSP shape indicator. The `findings` array is bounded by `maxFindings`; severity counts still reflect suppressed findings, and truncation inserts a fail-closed `CSPCAGE_FINDINGS_TRUNCATED` error so a small cap cannot hide an unsafe policy.
 
 Detected classes include:
 
@@ -99,7 +99,7 @@ Detected classes include:
 - Missing or broad `base-uri` protection against base-tag hijacking.
 - Missing or weak `frame-ancestors` clickjacking protection.
 - Wildcards, broad `https:` scheme sources, insecure HTTP, `data:`, `blob:`, `filesystem:`, and executable schemes in critical directives.
-- JSONP, AngularJS, and CDN script-gadget hosts such as Google-hosted libraries, jsDelivr, unpkg, cdnjs, raw GitHub content, cloud storage, and CDN wildcard hosts when they are not pinned by exact path, hash, or `'strict-dynamic'`.
+- JSONP, AngularJS, and CDN script-gadget hosts such as Google-hosted libraries, jsDelivr, unpkg, cdnjs, raw GitHub content, cloud storage, and CDN wildcard hosts unless the URL allowlist is ignored because of `'strict-dynamic'`. Hashes alone do not deactivate a host allowlist, and exact CDN paths are still location-based allowlist entries rather than cryptographic proof of content.
 - Nonces below 128 bits of decoded entropy, malformed nonce encodings, repeated nonces, and predictable placeholders such as test or numeric values.
 - SHA-1, MD5, malformed base64 digests, and wrong digest lengths for SHA-256, SHA-384, and SHA-512.
 - Legacy `report-uri` use, non-HTTPS reporting endpoints, credential-bearing endpoints, loopback or private-network reporting targets, protocol-relative endpoints, and broad reporting paths.

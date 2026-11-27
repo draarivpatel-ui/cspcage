@@ -318,6 +318,11 @@ test('accepts input at configured byte boundary', () => {
   assert.equal(parsed.valid, true);
 });
 
+test('comma separators count toward the byte bound before policy splitting', () => {
+  const input = "img-src 'self'" + ','.repeat(100);
+  expectParseError(input, CODE.INPUT_TOO_LARGE, { maxBytes: 20, maxPolicies: 16 });
+});
+
 test('rejects policy-count bound overflow', () => {
   expectParseError("img-src 'self', font-src 'self'", CODE.TOO_MANY_POLICIES, { maxPolicies: 1 });
 });

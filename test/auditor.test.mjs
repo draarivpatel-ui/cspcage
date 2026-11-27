@@ -286,11 +286,16 @@ for (const host of gadgetHosts) {
 }
 
 for (const host of gadgetHosts) {
-  test('exact path materially reduces CDN gadget finding: ' + host, () => {
+  test('exact path does not erase CDN gadget host risk: ' + host, () => {
     const report = auditCsp(baseline('https://' + host + '/exact-versioned-file.js'));
-    assertNoCode(report, 'CDN_SCRIPT_GADGET_HOST');
+    assertHasCode(report, 'CDN_SCRIPT_GADGET_HOST');
   });
 }
+
+test('detects bare jsDelivr host as a CDN script gadget host', () => {
+  const report = auditCsp(baseline('https://jsdelivr.net'));
+  assertHasCode(report, 'CDN_SCRIPT_GADGET_HOST');
+});
 
 test('detects subdomain of a known gadget host', () => {
   const report = auditCsp(baseline('https://ajax.googleapis.com'));
@@ -307,9 +312,9 @@ test('strict-dynamic suppresses obsolete host gadget allowlist finding', () => {
   assertNoCode(report, 'CDN_SCRIPT_GADGET_HOST');
 });
 
-test('valid hash suppresses host gadget finding per pinned-hash policy shape', () => {
+test('valid hash does not suppress live CDN host gadget finding', () => {
   const report = auditCsp(baseline("'" + strongHash + "' https://cdn.jsdelivr.net"));
-  assertNoCode(report, 'CDN_SCRIPT_GADGET_HOST');
+  assertHasCode(report, 'CDN_SCRIPT_GADGET_HOST');
 });
 
 test('nonce alone does not suppress CDN gadget host finding', () => {
@@ -388,6 +393,18 @@ for (const [endpoint, code] of endpointCases) {
     assertHasCode(report, 'LEGACY_REPORT_URI');
   });
 }
+
+test('protocol-relative reporting endpoint is still audited for host hazards', () => {
+  const report = auditCsp(reportingPolicy('//user:pass@localhost/csp'));
+  assertHasCode(report, 'REPORT_ENDPOINT_PROTOCOL_RELATIVE');
+  assertHasCode(report, 'REPORT_ENDPOINT_CREDENTIALS');
+  assertHasCode(report, 'REPORT_ENDPOINT_PRIVATE_NETWORK');
+});
+
+test('trailing-dot localhost reporting endpoint is treated as loopback', () => {
+  const report = auditCsp(reportingPolicy('https://localhost./csp'));
+  assertHasCode(report, 'REPORT_ENDPOINT_PRIVATE_NETWORK');
+});
 
 test('valid HTTPS report-uri only carries legacy mechanism warning', () => {
   const report = auditCsp(reportingPolicy('https://reports.example.com/csp'));
@@ -486,6 +503,16 @@ test('finding count remains bounded by configuration', () => {
   const tokens = Array.from({ length: 20 }, () => "'unsafe-inline'").join(' ');
   const report = auditCsp(baseline(tokens), { maxFindings: 10 });
   assert.equal(report.findings.length <= 10, true);
+});
+
+test('finding cap fails closed and cannot suppress error severity', () => {
+  for (const cap of [1, 2, 3, 4]) {
+    const report = auditCsp("script-src 'unsafe-inline'", { maxFindings: cap });
+    assert.equal(report.counts.errors > 0, true);
+    assert.equal(report.safe, false);
+    assert.equal(report.findings.length <= cap, true);
+    assertHasCode(report, 'CSPCAGE_FINDINGS_TRUNCATED');
+  }
 });
 
 test('audit output never exposes raw source token text in finding messages', () => {
