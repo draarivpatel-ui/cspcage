@@ -1,0 +1,72 @@
+{
+  "name": "cspcage",
+  "version": "1.0.0",
+  "description": "Zero-dependency CSP Level 3 security firewall, XSS-bypass auditor, nonce and hash guard, and safe header builder",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/draarivpatel-ui/cspcage"
+  },
+  "homepage": "https://github.com/draarivpatel-ui/cspcage#readme",
+  "bugs": {
+    "url": "https://github.com/draarivpatel-ui/cspcage/issues"
+  },
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./src/index.mjs",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.mjs",
+      "require": "./dist/cjs/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "cspcage": "bin/cspcage.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "dist/cjs",
+    "types",
+    "examples",
+    "README.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:cjs": "node scripts/build-cjs.mjs",
+    "check:cjs": "node scripts/build-cjs.mjs --check",
+    "check:types": "node scripts/check-types.mjs",
+    "smoke": "node scripts/cli-smoke.mjs",
+    "test": "node scripts/run-tests.mjs",
+    "prepack": "node scripts/build-cjs.mjs --check --quiet"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "security",
+    "content-security-policy",
+    "csp",
+    "csp-level-3",
+    "xss",
+    "xss-prevention",
+    "nonce",
+    "hash",
+    "strict-dynamic",
+    "clickjacking",
+    "header-security",
+    "web-security",
+    "zero-dependency",
+    "nodejs"
+  ],
+  "author": "draarivpatel-ui",
+  "license": "MIT",
+  "sideEffects": false,
+  "dependencies": {},
+  "devDependencies": {}
+}
